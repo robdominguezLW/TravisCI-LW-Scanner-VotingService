@@ -2,11 +2,11 @@ services:
 docker # Include Docker packages
 env: # Environment variables. These can be set up once in Travis instead of .travis.yml
   global:
-LW_ACCESS_TOKEN=your_token # See Integrate inline scanner to get your access token
-LW_ACCOUNT_NAME=my_company
+LW_ACCESS_TOKEN=$LW_ACCESS_TOKEN # See Integrate inline scanner to get your access token
+LW_ACCOUNT_NAME=$LW_ACCOUNT_NAME
 before_install:
-docker pull image_name:tag # Pull the image to scan
+docker pull ghcr.io/mase-force/lw-inline-scanner-votingservice:556af28577548d452a609cdc6871ead8580330bb # Pull the image to scan
 script:
 curl -L https://github.com/lacework/lacework-vulnerability-scanner/releases/latest/download/lw-scanner-linux-amd64 -o lw-scanner
 chmod u+x lw-scanner
-./lw-scanner image evaluate image_name tag --build-id $TRAVIS_BUILD_ID --build-plan $TRAVIS_JOB_NAME
+./lw-scanner image evaluate ghcr.io/mase-force/lw-inline-scanner-votingservice 556af28577548d452a609cdc6871ead8580330bb --build-id $TRAVIS_BUILD_ID --build-plan $TRAVIS_JOB_NAME

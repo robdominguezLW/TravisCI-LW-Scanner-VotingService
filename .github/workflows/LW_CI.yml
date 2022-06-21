@@ -1,0 +1,52 @@
+name: Lacework Inline Scan
+on:
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  Build-Scan-Push:
+    runs-on: ubuntu-latest
+    env:
+      LW_ACCESS_TOKEN: ${{ secrets.LW_ACCESS_TOKEN }}
+      LW_ACCOUNT_NAME: ${{ secrets.LW_ACCOUNT_NAME }}
+      LW_SCANNER_SAVE_RESULTS: true
+      LW_SCANNER_SCAN_LIBRARY_PACKAGES: true
+      DOCKER_REPO: mase-force/lw-inline-scanner-votingservice
+      DOCKER_TAG: ${{ github.sha }}
+    steps:
+
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Build the latest Docker image
+        run: docker build -t ${DOCKER_REPO}:${DOCKER_TAG} ./voting-service
+
+      - name: Download Lacework Scanner
+        run: |
+          curl -LJO https://github.com/lacework/lacework-vulnerability-scanner/releases/latest/download/lw-scanner-linux-amd64
+          sudo mv lw-scanner-linux-amd64 lw-scanner
+          sudo chmod +x lw-scanner
+
+      - name: Lacework Image Assurance Scan
+        run: |
+          ./lw-scanner image evaluate ${DOCKER_REPO} ${DOCKER_TAG} \
+            --build-id ${{ github.run_id }} --html --html-file lacework-report.html \
+            --policy --fail-on-violation-exit-code 1
+
+      - name: Save Lacework HTML Report
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: lacework-report
+          path: lacework-report.html
+
+      - name: Login to GitHub Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push the latest Docker image
+        run: docker push ${DOCKER_REPO}:${DOCKER_TAG}
